@@ -25,7 +25,9 @@ services:
       - SCHEMA_URL=http://schema-server:5001
       - VALUES_URL=http://values-server:5002
       - OLLAMA_URL=http://ollama:11434
-      - OLLAMA_MODEL=phi3
+      - OLLAMA_MODEL=phi3:latest
+      - OLLAMA_TIMEOUT=120
+      - HTTP_TIMEOUT=20
     depends_on:
       - schema-server
       - values-server
@@ -36,3 +38,8 @@ services:
     ports:
       - "11434:11434"
     restart: always
+    volumes:
+      - ollama_data:/root/.ollama
+
+volumes:
+  ollama_data:
