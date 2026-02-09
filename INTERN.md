@@ -1,8 +1,13 @@
 ## Project Overview
 
-This project implements a **local, AI-assisted configuration management system** that enables secure modification of complex JSON configuration files using **natural language commands**.
+This project implements a **local, AI-assisted configuration management system** that enables safe modification of complex JSON configuration files using natural language.
 
-The core objective is to transform **unstructured user input** into **structured, validated, and executable configuration changes**, while maintaining strict safety guarantees through **deterministic code** and **JSON Schema validation**.
+The core goal is to transform **unstructured user input** into **structured, validated configuration changes**, while preserving strict safety guarantees through **deterministic code** and **JSON Schema validation**.
+
+The system is intentionally designed to balance:
+- AI flexibility
+- Deterministic correctness
+- Schema-enforced safety
 
 ---
 
@@ -12,40 +17,40 @@ The system operates as a **multi-stage pipeline** with clearly separated respons
 
 ### Pipeline Stages
 
-#### 1. Intent Analysis
-- A locally hosted LLM (Phi-3 via Ollama) interprets the user's natural language input
-- Determines:
-  - Target application
-  - Intended configuration parameter
-  - Desired value
+1. **Intent Analysis**
+   - A locally hosted LLM (Phi-3 via Ollama) interprets the user’s natural language input.
+   - Determines:
+     - Target application
+     - Intended configuration parameter
+     - Desired value
 
-#### 2. Deterministic Processing
-- All numeric parsing, normalization, and unit conversion are handled by predefined Python logic
-- No numeric interpretation is delegated to the AI
+2. **Deterministic Processing**
+   - All numeric parsing, normalization, and unit conversion are handled by Python code.
+   - No numeric interpretation is delegated to the AI.
 
-#### 3. Schema Validation
-- The proposed configuration change is validated against the application’s JSON Schema
+3. **Schema Validation**
+   - The proposed configuration change is validated against the application’s JSON Schema.
 
-#### 4. Application
-- Only schema-approved changes are committed to the configuration output
+4. **Application**
+   - Only schema-approved changes are returned to the caller.
 
-This layered design combines **AI flexibility**, **deterministic correctness**, and **schema-enforced safety**.
+This layered design combines AI interpretation with deterministic execution and schema-level safety.
 
 ---
 
 ## 1. Initial Goal and First Design
 
 ### Scope and Intent
-- Build a fully local system capable of accepting natural language configuration requests
-- Apply changes safely to application configuration files
-- Eliminate manual JSON editing while preserving strict structural correctness
+- Accept natural language configuration requests.
+- Safely apply changes to application configuration files.
+- Eliminate manual JSON editing while preserving strict structural correctness.
 
 ### Initial Design
 The AI model was initially provided with:
 - The full JSON Schema
 - The current configuration values
 
-The model was expected to return a **fully updated JSON object**.
+The model was expected to return a fully updated JSON object.
 
 ### Observed Problems
 - Excessive prompt sizes
@@ -55,7 +60,7 @@ The model was expected to return a **fully updated JSON object**.
 ### Design Decision
 Responsibilities were redistributed:
 - The AI was limited to **intent interpretation**
-- Structural logic and mutation were moved into application code
+- All structural logic and mutation were moved into application code
 
 ### Outcome and Trade-off
 - Faster and more predictable responses
@@ -66,15 +71,11 @@ Responsibilities were redistributed:
 
 ## 2. LLM Timeout Problem
 
-### Scope and Intent
-The Bot Service relies on a local LLM (Phi-3 via Ollama) running on CPU resources.
-
 ### Problem Description
 Requests such as:
-
 set tournament service memory to 1024mb
 
-frequently resulted in **HTTP timeout errors**.
+frequently resulted in HTTP timeout errors.
 
 ### Root Cause Analysis
 - JSON Schema and values created very large prompts
@@ -85,7 +86,7 @@ frequently resulted in **HTTP timeout errors**.
 The AI was restricted to producing a minimal structure:
 
 { "app": "...", "path": "...", "value": "..." }
-All JSON manipulation was delegated to the Python backend.
+All JSON manipulation was delegated to deterministic Python code.
 
 Resulting Trade-off
 Timeouts were eliminated
@@ -94,281 +95,211 @@ Performance improved significantly
 
 System stability was prioritized over AI autonomy
 
----
+3. Hallucinated JSON Paths
+Problem Description
+The AI occasionally generated configuration paths that did not exist, causing schema validation failures.
 
-## 3. Hallucinated JSON Paths
+Risk Assessment
+The AI inferred structure instead of following schema
 
-### Scope and Intent
+Silent configuration corruption was identified as a critical production risk
 
-All configuration changes must strictly conform to the defined JSON Schema.
-
-### Problem Description
-
-The AI occasionally generated configuration paths that did not exist, leading to validation failures.
-
-### Risk Assessment
-
-- The AI inferred or guessed structure
-- Silent configuration corruption was identified as a critical production risk
-
-### Mitigation Strategy
-
+Mitigation Strategy
 A strict validation pipeline was enforced:
 
-1. Deep-copy the current values JSON
-2. Apply the change via deterministic code
-3. Validate using `jsonschema.validate`
-4. Reject immediately on failure
+Deep-copy the current values JSON
 
-### Outcome
+Apply the change via deterministic code
 
-- Invalid configurations are impossible to commit
-- The JSON Schema acts as the final authority
+Validate using jsonschema.validate
 
----
+Reject immediately on failure
 
-## 4. Service-to-Service Communication
+Outcome
+Invalid configurations cannot be committed
 
-### Scope and Intent
+JSON Schema acts as the final authority
 
-Service-to-service communication is intentionally described at the logical level rather than the raw HTTP level.
+4. Service-to-Service Communication
+Design Intent
+Service communication is documented at the logical level, not the raw HTTP level.
 
-This is a conscious documentation choice.
+Interaction Model
+The Bot Service:
 
-### How Services Communicate
+Fetches schemas from the Schema Service
 
-The Bot Service communicates with:
-
-- Schema Service to fetch the JSON Schema of an application
-- Values Service to fetch the current configuration values
+Fetches values from the Values Service
 
 Characteristics:
 
-- Communication occurs via simple HTTP GET requests
-- Application names are used as identifiers
-- The Bot Service never mutates external state
+Communication via simple HTTP GET requests
 
-### Logical Interaction Flow
+Application names used as identifiers
 
-1. Fetch schema and values
-2. Apply change on a deep-copied values object
-3. Validate against schema
-4. Reject or commit the result
+No external state mutation
 
-### Documentation Trade-off
+Logical Flow
+Fetch schema and values
 
-- README.md documents HTTP endpoints and request and response formats
-- INTERN.md documents logical responsibilities, validation and safety guarantees, and architectural reasoning
+Apply change on a deep-copied object
 
-This separation avoids duplication and keeps the intern-level documentation focused on design intent.
+Validate against schema
 
+Reject or return the result
 
-## 5. Invalid Path Errors from README Examples
+Documentation Trade-off
+README.md documents HTTP endpoints
 
-### Scope and Intent
+INTERN.md documents architectural reasoning and safety guarantees
 
-Ensuring that all documented example commands behave reliably.
-
-### Problem Description
-
+5. Invalid Path Errors from README Examples
+Problem Description
 The input:
 
 set GAME_NAME env to toyblast for matchmaking service
-
 initially failed due to an invalid path.
 
-### Analysis
+Analysis
+The actual configuration path was deeply nested
 
-- The actual configuration path was deeply nested
-- The AI could not infer this reliably from abstraction alone
+The AI could not reliably infer this hierarchy
 
-### Resolution
+Resolution
+Prompts were updated to enforce exact path rules
 
-- System prompts were updated to clarify hierarchy rules
-- Code-level normalization was added for common patterns such as:
-  - env
-  - cpu
-  - memory
+Code-level normalization was added for common patterns:
 
-### Outcome
+env
 
-- README examples became stable
-- Path hallucinations were significantly reduced
+cpu
 
----
+memory
 
-## 6. Missing Debug Tools in Docker
+Outcome
+README examples became stable
 
-### Scope and Intent
+Path hallucinations were significantly reduced
 
-Effective debugging during development and live testing.
+6. Missing Debug Tools in Docker
+Problem Description
+Minimal base images lacked basic debugging tools:
 
-### Problem Description
-
-Minimal base images lacked basic debugging tools, resulting in errors such as:
-
+makefile
+Kodu kopyala
 curl: not found
-
-### Resolution
-
+Resolution
 The curl package was explicitly installed in the Bot Service Docker image.
 
-### Trade-off
+Trade-off
+Slightly larger image size
 
-- Slightly larger image size
-- Significantly improved debuggability
+Significantly improved debuggability
 
----
+7. Ollama Model Availability Issues
+Problem Description
+Early requests failed with:
 
-## 7. Ollama Model Availability Issues
+404 Not Found
 
-### Scope and Intent
+model not found
 
-Ensuring reliable startup behavior for the local LLM dependency.
+Root Cause
+The Ollama service started before the required model was pulled.
 
-### Problem Description
-
-Early requests failed with 404 or model not found errors.
-
-### Root Cause
-
-The Ollama service started before the required model was pulled locally.
-
-### Resolution
-
+Resolution
 Explicit model pull during setup:
 
 ollama pull phi3:latest
-Clearer service dependency handling was added.
+Clearer service dependency handling
 
----
+8. Why Some Logic Is Hard-Coded
+Design Intent
+Guarantee precise and predictable numeric interpretation.
 
-## 8. Why Some Logic Is Hard-Coded
+Examples
+%80
 
-### Scope and Intent
+1024mb
 
-Guaranteeing precise numeric interpretation.
+replicas
 
-### Problem Description
-
-Allowing the AI to interpret numeric transformations proved unreliable.
-
-Examples include:
-
-- %80  
-- 1024mb
-
-### Design Decision
-
+Design Decision
 A hybrid approach was adopted:
 
-- The AI identifies intent
-- Application code performs parsing and normalization
+AI identifies intent
 
-### Outcome
+Application code performs parsing and normalization
 
-- Predictable numeric behavior
-- Reduced ambiguity in configuration changes
+Outcome
+Deterministic behavior
 
----
+Reduced ambiguity
 
-## 9. Core Architectural Insight
+Improved schema compatibility
 
-### Key Insight
+9. Core Architectural Insight
+The system enforces a strict separation of responsibility:
 
-The system follows a strict separation of responsibility:
+AI → Interpreter
 
-- AI acts as the interpreter
-- Code acts as the authority
-- Schema acts as the final decision-maker
+Code → Authority
 
----
+Schema → Final decision-maker
 
-## 10. Final Result
+This separation is essential for building reliable, production-safe systems.
 
-### Summary
-
+10. Final Result
+Summary
 The final system balances performance, correctness, and safety using fully local resources.
 
-### System Properties
+System Properties
+Fully Local
+No external API dependencies
 
-- Fully Local  
-  No external API dependencies
+Schema-Safe
+Invalid data cannot be committed
 
-- Schema-Safe  
-  Invalid data cannot be committed
+Deterministic
+Critical logic is code-controlled
 
-- Deterministic  
-  Critical logic is code-controlled
+Debuggable
+Every transformation step is traceable
 
-- Debuggable  
-  Every transformation step is traceable
+11. Framework Selection: Why FastAPI
+Summary
+FastAPI was selected to implement small, independent HTTP services with strong validation guarantees and minimal complexity.
 
+Reasons
+Strong request/response validation via Pydantic
 
----
+Clear and explicit API contracts
 
+Minimal boilerplate
 
-## 11. Framework Selection: Why FastAPI
+Structured error handling
 
-### Summary
-FastAPI was chosen as the HTTP framework to support **small, independent services** with strong validation guarantees and minimal operational complexity.
+Trade-off
+Advanced framework features were intentionally avoided
 
-### Framework Characteristics
+FastAPI is treated as a thin HTTP layer, not a business logic container
 
-- **Strict Input Validation**
-  - Request and response schemas are enforced using Pydantic models
+12. Limitations and Assumptions
+Limitations
+Single-node execution
 
-- **Clear API Contracts**
-  - Endpoints are explicit, self-documented, and predictable
+Updated configurations are not persisted to disk
 
-- **Low Boilerplate**
-  - Simple services can be implemented without unnecessary abstraction
+No authentication or authorization layer
 
-- **Structured Error Handling**
-  - HTTP errors and validation failures are handled consistently
+Assumptions
+Trusted local execution environment
 
-### Design Trade-off
+AI output is never authoritative
 
-- Advanced FastAPI features were intentionally avoided
-- The framework is used strictly as a **thin HTTP layer**
-- All business logic remains explicit and deterministic in application code
+JSON Schema is the final validation authority
 
----
+Deterministic code always overrides AI suggestions
 
-## 12. Limitations and Assumptions
-
-### Summary
-The system is intentionally constrained to reduce complexity and increase reliability.
-
-### Limitations
-
-- **Single-Node Execution**
-  - The system is designed to run on a single local machine
-
-- **No Persistent Writes**
-  - Updated configurations are returned to the caller but not written back to disk
-
-- **No Authentication Layer**
-  - Authentication and authorization are explicitly out of scope
-
-### Assumptions
-
-- **Trusted Execution Environment**
-  - The system assumes a controlled local environment
-
-- **AI Is Not Authoritative**
-  - AI output is treated as advisory input only
-
-- **Schema Is the Final Authority**
-  - All configuration changes must pass JSON Schema validation
-
-- **Code Overrides AI**
-  - Deterministic application logic always takes precedence
-
-### Design Outcome
-
-These constraints:
-
-- Simplify reasoning about the system
-- Improve predictability and debuggability
-- Prioritize correctness and safety over feature completeness
+Design Outcome
+These constraints simplify the system, improve predictability, and prioritize correctness and safety over feature completeness.
