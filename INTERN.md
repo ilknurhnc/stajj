@@ -40,7 +40,8 @@ This layered design combines AI interpretation with deterministic execution and 
 ---
 
 1. **Initial Goal and First Design**
-      Initially, I assumed that the safest approach would be to let the AI fully generate the updated configuration JSON, as long as it was validated against a schema.
+   
+   - Initially, I assumed that the safest approach would be to let the AI fully generate the updated configuration JSON, as long as it was validated against a schema.
    This seemed reasonable at first, because JSON Schema validation appeared to provide a strong safety net.
 
    - **Scope and Intent**
@@ -288,6 +289,7 @@ This layered design combines AI interpretation with deterministic execution and 
     - Determinism > Expressiveness
   - This aligns with the system’s safety-first design
 
+---
 
 12. **Framework Selection: Why FastAPI**
    - **Summary**
