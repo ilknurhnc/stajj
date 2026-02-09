@@ -305,4 +305,75 @@ The final system balances performance, correctness, and safety using fully local
   Every transformation step is traceable
 
 
+---
+11. Framework Selection: Why FastAPI
+Scope and Intent
 
+Implement small, independent HTTP services with strict input validation and predictable behavior.
+
+Decision
+
+FastAPI was selected as the web framework for all services.
+
+Reasons:
+
+Strong request/response validation via Pydantic
+
+Explicit and readable API contracts
+
+Minimal boilerplate for simple services
+
+Clear and structured error handling
+
+Outcome and Trade-off
+
+FastAPI enabled:
+
+Safer API boundaries
+
+Easier debugging and reasoning
+
+Clean separation between services
+
+Trade-off:
+
+Advanced features were intentionally not used
+
+The framework is treated as a thin HTTP layer, not a business logic container
+
+---
+
+12. Limitations and Assumptions
+Scope and Intent
+
+Define clear system boundaries and avoid hidden complexity.
+
+Limitations
+
+The system runs on a single local machine
+
+Updated configurations are not persisted to disk
+
+No authentication or authorization layer is implemented
+
+Assumptions
+
+The execution environment is trusted
+
+AI output is never authoritative
+
+JSON Schema is the final validation authority
+
+Deterministic code always overrides AI suggestions
+
+Outcome and Trade-off
+
+These constraints:
+
+Simplify the system
+
+Increase reliability and predictability
+
+Reduce operational and conceptual complexity
+
+The system favors correctness and safety over feature completeness.
