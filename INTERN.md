@@ -94,199 +94,215 @@ Performance improved significantly
 
 System stability was prioritized over AI autonomy
 
-3. Hallucinated JSON Paths
-Scope and Intent
+---
+
+## 3. Hallucinated JSON Paths
+
+### Scope and Intent
+
 All configuration changes must strictly conform to the defined JSON Schema.
 
-Problem Description
+### Problem Description
+
 The AI occasionally generated configuration paths that did not exist, leading to validation failures.
 
-Risk Assessment
-The AI inferred or guessed structure
+### Risk Assessment
 
-Silent configuration corruption was identified as a critical production risk
+- The AI inferred or guessed structure
+- Silent configuration corruption was identified as a critical production risk
 
-Mitigation Strategy
+### Mitigation Strategy
+
 A strict validation pipeline was enforced:
 
-Deep-copy the current values JSON
+1. Deep-copy the current values JSON
+2. Apply the change via deterministic code
+3. Validate using `jsonschema.validate`
+4. Reject immediately on failure
 
-Apply the change via deterministic code
+### Outcome
 
-Validate using jsonschema.validate
+- Invalid configurations are impossible to commit
+- The JSON Schema acts as the final authority
 
-Reject immediately on failure
+---
 
-Outcome
-Invalid configurations are impossible to commit
+## 4. Service-to-Service Communication
 
-The JSON Schema acts as the final authority
+### Scope and Intent
 
-4. Service-to-Service Communication
-Scope and Intent
-Service-to-service communication is intentionally described at the logical level, rather than the raw HTTP level.
+Service-to-service communication is intentionally described at the logical level rather than the raw HTTP level.
 
 This is a conscious documentation choice.
 
-How Services Communicate
+### How Services Communicate
+
 The Bot Service communicates with:
 
-Schema Service to fetch the JSON Schema of an application
-
-Values Service to fetch the current configuration values
+- Schema Service to fetch the JSON Schema of an application
+- Values Service to fetch the current configuration values
 
 Characteristics:
 
-Communication occurs via simple HTTP GET requests
+- Communication occurs via simple HTTP GET requests
+- Application names are used as identifiers
+- The Bot Service never mutates external state
 
-Application names are used as identifiers
+### Logical Interaction Flow
 
-The Bot Service never mutates external state
+1. Fetch schema and values
+2. Apply change on a deep-copied values object
+3. Validate against schema
+4. Reject or commit the result
 
-Logical Interaction Flow
-Fetch schema and values
+### Documentation Trade-off
 
-Apply change on a deep-copied values object
-
-Validate against schema
-
-Reject or commit the result
-
-Documentation Trade-off
-README.md documents:
-
-HTTP endpoints
-
-Request and response formats
-
-INTERN.md documents:
-
-Logical responsibilities
-
-Validation and safety guarantees
-
-Architectural reasoning
+- README.md documents HTTP endpoints and request and response formats
+- INTERN.md documents logical responsibilities, validation and safety guarantees, and architectural reasoning
 
 This separation avoids duplication and keeps the intern-level documentation focused on design intent.
 
-5. Invalid Path Errors from README Examples
-Scope and Intent
+
+## 5. Invalid Path Errors from README Examples
+
+### Scope and Intent
+
 Ensuring that all documented example commands behave reliably.
 
-Problem Description
+### Problem Description
+
 The input:
 
 set GAME_NAME env to toyblast for matchmaking service
+
 initially failed due to an invalid path.
 
-Analysis
-The actual configuration path was deeply nested
+### Analysis
 
-The AI could not infer this reliably from abstraction alone
+- The actual configuration path was deeply nested
+- The AI could not infer this reliably from abstraction alone
 
-Resolution
-System prompts were updated to clarify hierarchy rules
+### Resolution
 
-Code-level normalization was added for common patterns such as:
+- System prompts were updated to clarify hierarchy rules
+- Code-level normalization was added for common patterns such as:
+  - env
+  - cpu
+  - memory
 
-env
+### Outcome
 
-cpu
+- README examples became stable
+- Path hallucinations were significantly reduced
 
-memory
+---
 
-Outcome
-README examples became stable
+## 6. Missing Debug Tools in Docker
 
-Path hallucinations were significantly reduced
+### Scope and Intent
 
-6. Missing Debug Tools in Docker
-Scope and Intent
 Effective debugging during development and live testing.
 
-Problem Description
+### Problem Description
+
 Minimal base images lacked basic debugging tools, resulting in errors such as:
 
 curl: not found
-Resolution
+
+### Resolution
+
 The curl package was explicitly installed in the Bot Service Docker image.
 
-Trade-off
-Slightly larger image size
+### Trade-off
 
-Significantly improved debuggability
+- Slightly larger image size
+- Significantly improved debuggability
 
-7. Ollama Model Availability Issues
-Scope and Intent
+---
+
+## 7. Ollama Model Availability Issues
+
+### Scope and Intent
+
 Ensuring reliable startup behavior for the local LLM dependency.
 
-Problem Description
-Early requests failed with:
+### Problem Description
 
-404
+Early requests failed with 404 or model not found errors.
 
-model not found
+### Root Cause
 
-Root Cause
 The Ollama service started before the required model was pulled locally.
 
-Resolution
+### Resolution
+
 Explicit model pull during setup:
 
 ollama pull phi3:latest
 Clearer service dependency handling was added.
 
-8. Why Some Logic Is Hard-Coded
-Scope and Intent
+---
+
+## 8. Why Some Logic Is Hard-Coded
+
+### Scope and Intent
+
 Guaranteeing precise numeric interpretation.
 
-Problem Description
+### Problem Description
+
 Allowing the AI to interpret numeric transformations proved unreliable.
 
 Examples include:
 
-%80
+- %80  
+- 1024mb
 
-1024mb
+### Design Decision
 
-Design Decision
 A hybrid approach was adopted:
 
-The AI identifies intent
+- The AI identifies intent
+- Application code performs parsing and normalization
 
-Application code performs parsing and normalization
+### Outcome
 
-Outcome
-Predictable numeric behavior
+- Predictable numeric behavior
+- Reduced ambiguity in configuration changes
 
-Reduced ambiguity in configuration changes
+---
 
-9. Core Architectural Insight
-Key Insight
+## 9. Core Architectural Insight
+
+### Key Insight
+
 The system follows a strict separation of responsibility:
 
-AI acts as the interpreter
+- AI acts as the interpreter
+- Code acts as the authority
+- Schema acts as the final decision-maker
 
-Code acts as the authority
+---
 
-Schema acts as the final decision-maker
+## 10. Final Result
 
-10. Final Result
-Summary
+### Summary
+
 The final system balances performance, correctness, and safety using fully local resources.
 
-System Properties
-Fully Local
-No external API dependencies
+### System Properties
 
-Schema-Safe
-Invalid data cannot be committed
+- Fully Local  
+  No external API dependencies
 
-Deterministic
-Critical logic is code-controlled
+- Schema-Safe  
+  Invalid data cannot be committed
 
-Debuggable
-Every transformation step is traceable
+- Deterministic  
+  Critical logic is code-controlled
+
+- Debuggable  
+  Every transformation step is traceable
 
 
 
