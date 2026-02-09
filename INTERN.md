@@ -4,11 +4,6 @@ This project implements a **local, AI-assisted configuration management system**
 
 The core goal is to transform **unstructured user input** into **structured, validated configuration changes**, while preserving strict safety guarantees through **deterministic code** and **JSON Schema validation**.
 
-The system is intentionally designed to balance:
-- AI flexibility
-- Deterministic correctness
-- Schema-enforced safety
-
 ---
 
 ## System Workflow Overview
@@ -28,10 +23,16 @@ The system operates as a **multi-stage pipeline** with clearly separated respons
    - All numeric parsing, normalization, and unit conversion are handled by Python code.
    - No numeric interpretation is delegated to the AI.
 
-3. **Schema Validation**
+3. **Schema and Values Retrieval**
+   - The Bot Service retrieves:
+     - The application JSON Schema from the Schema Service
+     - The current configuration values from the Values Service
+   - These documents are treated as the single source of truth for validation and mutation.
+
+4. **Schema Validation**
    - The proposed configuration change is validated against the application’s JSON Schema.
 
-4. **Application**
+5. **Application**
    - Only schema-approved changes are returned to the caller.
 
 This layered design combines AI interpretation with deterministic execution and schema-level safety.
@@ -39,6 +40,9 @@ This layered design combines AI interpretation with deterministic execution and 
 ---
 
 1. **Initial Goal and First Design**
+      Initially, I assumed that the safest approach would be to let the AI fully generate the updated configuration JSON, as long as it was validated against a schema.
+   This seemed reasonable at first, because JSON Schema validation appeared to provide a strong safety net.
+
    - **Scope and Intent**
      - Accept natural language configuration requests.
      - Safely apply changes to application configuration files.
@@ -68,6 +72,7 @@ This layered design combines AI interpretation with deterministic execution and 
 ---
 
 2. **LLM Timeout Problem**
+     
    - **Problem Description**
      - Requests such as:
        ```
@@ -95,6 +100,7 @@ This layered design combines AI interpretation with deterministic execution and 
 ---
 
 3. **Hallucinated JSON Paths**
+   -This issue changed how I think about AI reliability: even when an output looks structurally valid, it cannot be trusted unless it is enforced by deterministic code and validation.
    - **Problem Description**
      - The AI occasionally generated configuration paths that did not exist, causing schema validation failures.
 
@@ -118,6 +124,7 @@ This layered design combines AI interpretation with deterministic execution and 
 4. **Service-to-Service Communication**
    - **Design Intent**
      - Service communication is documented at the logical level, not the raw HTTP level.
+     - Schemas and values are separated to reflect real-world systems, where validation contracts and runtime configuration evolve independently.
 
    - **Interaction Model**
      - The Bot Service:
@@ -246,7 +253,43 @@ This layered design combines AI interpretation with deterministic execution and 
 
 ---
 
-11. **Framework Selection: Why FastAPI**
+11. **LLM Selection: Why Phi-3 via Ollama**
+
+- **Scope and Intent**
+  - The system requires a local language model that can:
+    - Run entirely on a developer machine
+    - Follow strict instructions
+    - Produce short, structured, machine-readable output
+    - Avoid creative or verbose responses
+
+- **Model Choice**
+  - Phi-3 was selected and deployed via Ollama for the following reasons:
+
+- **Local Execution**
+  - Runs fully locally with no external API dependency
+  - Fully compliant with project constraints
+
+- **Instruction-Following Reliability**
+  - Performs well on short, rule-based prompts
+  - Suitable for structured JSON-oriented output
+
+- **CPU-Friendly Performance**
+  - Acceptable inference times on CPU-only environments
+  - No GPU requirement
+
+- **Predictable Output**
+  - Combined with low temperature and strict prompts
+  - Output remains concise and deterministic
+
+- **Design Trade-off**
+  - Phi-3 is not chosen for creativity or general intelligence
+  - It is chosen because:
+    - Reliability > Creativity
+    - Determinism > Expressiveness
+  - This aligns with the system’s safety-first design
+
+
+12. **Framework Selection: Why FastAPI**
    - **Summary**
      - FastAPI was selected to implement small, independent HTTP services with strong validation guarantees and minimal complexity.
 
@@ -262,12 +305,13 @@ This layered design combines AI interpretation with deterministic execution and 
 
 ---
 
-
-12. **Limitations and Assumptions**
+13. **Limitations and Assumptions**
    - **Limitations**
      - Single-node execution
      - Updated configurations are not persisted to disk
      - No authentication or authorization layer
+     - This choice is intentional to keep the system stateless and focused on safe configuration transformation rather than long-term configuration storage.
+
 
    - **Assumptions**
      - Trusted local execution environment
@@ -276,6 +320,5 @@ This layered design combines AI interpretation with deterministic execution and 
      - Deterministic code always overrides AI suggestions
 
    - **Design Outcome**
-     - These constraints simplify the system
-     - Improve predictability
-     - Prioritize correctness and safety over feature completeness
+     - These constraints simplify the system while prioritizing predictability, correctness, and safety.
+
