@@ -306,74 +306,69 @@ The final system balances performance, correctness, and safety using fully local
 
 
 ---
-11. Framework Selection: Why FastAPI
-Scope and Intent
 
-Implement small, independent HTTP services with strict input validation and predictable behavior.
 
-Decision
+## 11. Framework Selection: Why FastAPI
 
-FastAPI was selected as the web framework for all services.
+### Summary
+FastAPI was chosen as the HTTP framework to support **small, independent services** with strong validation guarantees and minimal operational complexity.
 
-Reasons:
+### Framework Characteristics
 
-Strong request/response validation via Pydantic
+- **Strict Input Validation**
+  - Request and response schemas are enforced using Pydantic models
 
-Explicit and readable API contracts
+- **Clear API Contracts**
+  - Endpoints are explicit, self-documented, and predictable
 
-Minimal boilerplate for simple services
+- **Low Boilerplate**
+  - Simple services can be implemented without unnecessary abstraction
 
-Clear and structured error handling
+- **Structured Error Handling**
+  - HTTP errors and validation failures are handled consistently
 
-Outcome and Trade-off
+### Design Trade-off
 
-FastAPI enabled:
-
-Safer API boundaries
-
-Easier debugging and reasoning
-
-Clean separation between services
-
-Trade-off:
-
-Advanced features were intentionally not used
-
-The framework is treated as a thin HTTP layer, not a business logic container
+- Advanced FastAPI features were intentionally avoided
+- The framework is used strictly as a **thin HTTP layer**
+- All business logic remains explicit and deterministic in application code
 
 ---
 
-12. Limitations and Assumptions
-Scope and Intent
+## 12. Limitations and Assumptions
 
-Define clear system boundaries and avoid hidden complexity.
+### Summary
+The system is intentionally constrained to reduce complexity and increase reliability.
 
-Limitations
+### Limitations
 
-The system runs on a single local machine
+- **Single-Node Execution**
+  - The system is designed to run on a single local machine
 
-Updated configurations are not persisted to disk
+- **No Persistent Writes**
+  - Updated configurations are returned to the caller but not written back to disk
 
-No authentication or authorization layer is implemented
+- **No Authentication Layer**
+  - Authentication and authorization are explicitly out of scope
 
-Assumptions
+### Assumptions
 
-The execution environment is trusted
+- **Trusted Execution Environment**
+  - The system assumes a controlled local environment
 
-AI output is never authoritative
+- **AI Is Not Authoritative**
+  - AI output is treated as advisory input only
 
-JSON Schema is the final validation authority
+- **Schema Is the Final Authority**
+  - All configuration changes must pass JSON Schema validation
 
-Deterministic code always overrides AI suggestions
+- **Code Overrides AI**
+  - Deterministic application logic always takes precedence
 
-Outcome and Trade-off
+### Design Outcome
 
 These constraints:
 
-Simplify the system
-
-Increase reliability and predictability
-
-Reduce operational and conceptual complexity
-
-The system favors correctness and safety over feature completeness.
+- Simplify reasoning about the system
+- Improve predictability and debuggability
+- Prioritize correctness and safety over feature completeness
